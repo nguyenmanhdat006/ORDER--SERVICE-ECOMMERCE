@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: order-service
+
+  server:
+    port: 8084
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orderdb}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        use_sql_comments: false
+    show-sql: false
+    open-in-view: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/fashion}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8080/realms/fashion/protocol/openid-connect/certs}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: 8084
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+    include-binding-errors: never
+  compression:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.ecommerce: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/order-service.log
+
+# Service URLs
+service:
+  cart:
+    url: ${CART_SERVICE_URL:http://localhost:8081}
+  product:
+    url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+  user:
+    url: ${USER_SERVICE_URL:http://localhost:8083}
+
