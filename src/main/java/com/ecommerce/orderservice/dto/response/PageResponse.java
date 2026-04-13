@@ -9,9 +9,6 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * Page Response DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -7,6 +7,7 @@ import com.ecommerce.orderservice.dto.response.OrderStatusHistoryResponse;
 import com.ecommerce.orderservice.entity.Order;
 import com.ecommerce.orderservice.entity.OrderItem;
 import com.ecommerce.orderservice.entity.OrderStatusHistory;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -56,12 +57,12 @@ public abstract class OrderMapper {
                 .collect(Collectors.toList());
     }
 
-    protected AddressResponse parseAddress(String addressJson) {
-        if (addressJson == null || addressJson.isEmpty()) {
+    protected AddressResponse parseAddress(JsonNode addressJson) {
+        if (addressJson == null || addressJson.isNull() || addressJson.isEmpty()) {
             return null;
         }
         try {
-            return objectMapper.readValue(addressJson, AddressResponse.class);
+            return objectMapper.treeToValue(addressJson, AddressResponse.class);
         } catch (Exception e) {
             return null;
         }

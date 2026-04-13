@@ -9,9 +9,6 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
-/**
- * Order Search Request DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor

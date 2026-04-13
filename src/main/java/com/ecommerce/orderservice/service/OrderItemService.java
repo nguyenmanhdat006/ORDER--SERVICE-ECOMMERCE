@@ -4,7 +4,6 @@ import com.ecommerce.orderservice.client.CartServiceClient;
 import com.ecommerce.orderservice.client.ProductServiceClient;
 import com.ecommerce.orderservice.entity.Order;
 import com.ecommerce.orderservice.entity.OrderItem;
-import com.ecommerce.orderservice.enums.OrderStatus;
 import com.ecommerce.orderservice.exception.BadRequestException;
 import com.ecommerce.orderservice.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,16 +30,22 @@ public class OrderItemService {
     /**
      * Create order items from cart items
      */
-    public List<OrderItem> createOrderItems(Order order, List<CartServiceClient.CartItem> cartItems) {
+    public void createOrderItems(Order order, List<CartServiceClient.CartItem> cartItems) {
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartServiceClient.CartItem cartItem : cartItems) {
             // Validate stock for each item
             if (!productServiceClient.checkStock(cartItem.productId, cartItem.quantity)) {
+                log.error("Insufficient stock for product: {} (requested: {})", cartItem.productId, cartItem.quantity);
                 throw new BadRequestException("Insufficient stock for product: " + cartItem.productName);
             }
 
             // Create OrderItem with price snapshot
+            BigDecimal price = cartItem.price != null ? cartItem.price : BigDecimal.ZERO;
+            BigDecimal subtotal = cartItem.subtotal != null
+                    ? cartItem.subtotal
+                    : price.multiply(BigDecimal.valueOf(cartItem.quantity != null ? cartItem.quantity : 0));
+
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
                     .productId(cartItem.productId)
@@ -48,26 +53,24 @@ public class OrderItemService {
                     .productName(cartItem.productName)
                     .productImageUrl(cartItem.productImageUrl)
                     .quantity(cartItem.quantity)
-                    .price(cartItem.price)
-                    .subtotal(cartItem.subtotal)
+                    .price(price)
+                    .subtotal(subtotal)
                     .build();
 
             orderItems.add(orderItem);
 
             // Reduce product stock
-            try {
-                productServiceClient.reduceStock(cartItem.productId, cartItem.quantity);
-            } catch (Exception e) {
-                log.error("Failed to reduce stock for product: {}", cartItem.productId, e);
-                throw new BadRequestException("Failed to update product stock");
-            }
+//            try {
+//                productServiceClient.reduceStock(cartItem.productId, cartItem.quantity);
+//            } catch (Exception e) {
+//                log.error("Failed to reduce stock for product: {}", cartItem.productId, e);
+//                throw new BadRequestException("Failed to update product stock");
+//            }
         }
 
         // Save all order items
-        orderItems = orderItemRepository.saveAll(orderItems);
+        orderItemRepository.saveAll(orderItems);
         log.info("Order items created for order: {}", order.getId());
-
-        return orderItems;
     }
 
     /**
@@ -82,7 +85,7 @@ public class OrderItemService {
      */
     public BigDecimal calculateItemsTotal(List<CartServiceClient.CartItem> cartItems) {
         return cartItems.stream()
-                .map(item -> item.subtotal)
+                .map(item -> item.subtotal != null ? item.subtotal : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

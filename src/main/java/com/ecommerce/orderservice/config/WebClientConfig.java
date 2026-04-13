@@ -8,29 +8,20 @@ import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
 
-/**
- * WebClient Configuration
- */
 @Configuration
 public class WebClientConfig {
 
-    /**
-     * WebClient for Cart Service
-     */
     @Bean("cartServiceWebClient")
     public WebClient cartServiceWebClient() {
         HttpClient httpClient = HttpClient.create()
                 .responseTimeout(Duration.ofSeconds(10));
 
         return WebClient.builder()
-                .baseUrl("http://localhost:8081")
+                .baseUrl("http://localhost:8083")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
 
-    /**
-     * WebClient for Product Service
-     */
     @Bean("productServiceWebClient")
     public WebClient productServiceWebClient() {
         HttpClient httpClient = HttpClient.create()
@@ -42,9 +33,7 @@ public class WebClientConfig {
                 .build();
     }
 
-    /**
-     * WebClient for User Service
-     */
+
     @Bean("userServiceWebClient")
     public WebClient userServiceWebClient() {
         HttpClient httpClient = HttpClient.create()

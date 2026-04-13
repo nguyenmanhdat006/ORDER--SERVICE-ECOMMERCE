@@ -11,12 +11,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * Order Entity
@@ -67,11 +71,13 @@ public class Order {
     @Column(name = "total", nullable = false, precision = 19, scale = 2)
     private BigDecimal total;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "shipping_address", columnDefinition = "jsonb")
-    private String shippingAddress;
+    private JsonNode shippingAddress;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "billing_address", columnDefinition = "jsonb")
-    private String billingAddress;
+    private JsonNode billingAddress;
 
     @Column(name = "customer_name", nullable = false)
     private String customerName;

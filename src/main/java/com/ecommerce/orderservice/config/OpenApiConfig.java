@@ -14,9 +14,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * OpenAPI/Swagger Configuration
- */
 @Configuration
 public class OpenApiConfig {
 

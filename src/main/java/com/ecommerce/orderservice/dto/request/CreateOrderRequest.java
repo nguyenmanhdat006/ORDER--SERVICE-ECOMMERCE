@@ -11,9 +11,6 @@ import lombok.Setter;
 
 import java.util.Optional;
 
-/**
- * Create Order Request DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,8 +25,7 @@ public class CreateOrderRequest {
     private String paymentMethod;
 
     @Valid
-    @NotBlank(message = "Shipping address is required")
-    @Schema(description = "Shipping address information", required = true)
+    @jakarta.validation.constraints.NotNull(message = "Shipping address is required")
     private AddressRequest shippingAddress;
 
     @Valid
