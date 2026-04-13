@@ -2,7 +2,7 @@
 
 Order Management Service cho hệ thống E-commerce Fashion
 
-## 🚀 Tech Stack
+## Tech Stack
 
 - **Framework:** Spring Boot 3.2.2
 - **Database:** PostgreSQL 15
@@ -10,7 +10,7 @@ Order Management Service cho hệ thống E-commerce Fashion
 - **Build Tool:** Maven
 - **Java Version:** 17
 
-## 📦 Dependencies
+## Dependencies
 
 - Spring Web
 - Spring Data JPA
@@ -22,7 +22,7 @@ Order Management Service cho hệ thống E-commerce Fashion
 - Validation
 - Actuator
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Order Service
@@ -33,7 +33,7 @@ Order Service
 └── Security: JWT-based authentication via Keycloak
 ```
 
-## 📋 API Endpoints
+## API Endpoints
 
 ### User Endpoints (Authenticated)
 
@@ -53,13 +53,13 @@ Order Service
 | GET | `/api/orders/search` | Search orders with filters |
 | GET | `/api/orders/summary` | Get order statistics |
 
-## 🔐 Security
+## Security
 
 - All endpoints require JWT authentication
 - Admin endpoints require `ADMIN` role
 - JWT issued by Keycloak realm: `fashion`
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### orders
 - id (UUID, PK)
@@ -92,7 +92,7 @@ Order Service
 - changed_by (VARCHAR)
 - changed_at (TIMESTAMP)
 
-## 🔄 Order Status Flow
+## Order Status Flow
 
 ```
 PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED
@@ -100,7 +100,7 @@ PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED
 CANCELLED  CANCELLED  CANCELLED
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -147,7 +147,7 @@ spring:
           issuer-uri: http://localhost:8080/realms/fashion
 ```
 
-## 📝 Business Logic
+## Business Logic
 
 ### Create Order Flow
 
@@ -173,22 +173,8 @@ spring:
 4. Restore product stock
 5. Add status history entry
 
-## 🧪 Testing
 
-```bash
-# Run tests
-mvn test
-
-# Run with coverage
-mvn clean test jacoco:report
-```
-
-## 📊 Monitoring
-
-- Health Check: `http://localhost:8084/actuator/health`
-- Metrics: `http://localhost:8084/actuator/prometheus`
-
-## 🔗 Service Dependencies
+## Service Dependencies
 
 - **Cart Service** (port 8081): Get cart, clear cart
 - **Product Service** (port 8082): Check stock, reduce stock
@@ -204,24 +190,4 @@ mvn clean test jacoco:report
 - Cart is automatically cleared after order creation
 - Tax is calculated as 10% of subtotal
 - Shipping is flat rate ($10)
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Cannot connect to database**
-   - Ensure PostgreSQL is running
-   - Check connection string in application.yaml
-
-2. **JWT authentication fails**
-   - Verify Keycloak is running
-   - Check issuer-uri matches Keycloak realm
-
-3. **Cannot call other services**
-   - Ensure Cart and Product services are running
-   - Check WebClient baseUrl configuration
-
-## 📄 License
-
-Proprietary - E-commerce Fashion Project
 
