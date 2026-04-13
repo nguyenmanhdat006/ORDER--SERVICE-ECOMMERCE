@@ -7,9 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Cancel Order Request DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor

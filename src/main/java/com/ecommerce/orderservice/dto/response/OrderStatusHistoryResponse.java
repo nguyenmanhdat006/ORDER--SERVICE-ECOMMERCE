@@ -10,9 +10,6 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Order Status History Response DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -7,9 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Generic API Response Wrapper
- */
 @Getter
 @Setter
 @NoArgsConstructor

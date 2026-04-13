@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +59,9 @@ public class OrderService {
         String userId = getCurrentUserId();
         String token = getCurrentToken();
 
+        log.info("Preparing Cart Service call for createOrder: userId={}, authTokenPresent={}",
+                userId, token != null && !token.isBlank());
+
         // Get cart from cart service
         CartServiceClient.CartResponse cart = cartServiceClient.getCart(userId, token);
 
@@ -81,19 +85,16 @@ public class OrderService {
                     .status(OrderStatus.PENDING)
                     .paymentStatus(PaymentStatus.PENDING)
                     .paymentMethod(parsePaymentMethod(request.getPaymentMethod()))
-                    .shippingAddress(objectMapper.writeValueAsString(request.getShippingAddress()))
+                    .shippingAddress(objectMapper.valueToTree(request.getShippingAddress()))
                     .billingAddress(request.getBillingAddress() != null ?
-                            objectMapper.writeValueAsString(request.getBillingAddress()) :
-                            objectMapper.writeValueAsString(request.getShippingAddress()))
+                            objectMapper.valueToTree(request.getBillingAddress()) :
+                            objectMapper.valueToTree(request.getShippingAddress()))
                     .customerName(request.getShippingAddress().getFullName())
                     .customerEmail(request.getShippingAddress().getFullName())
                     .customerPhone(request.getShippingAddress().getPhone())
                     .notes(request.getNotes())
                     .orderedAt(LocalDateTime.now())
                     .build();
-
-            // Create order items from cart
-            orderItemService.createOrderItems(order, cart.items);
 
             // Calculate totals
             BigDecimal subtotal = orderItemService.calculateItemsTotal(cart.items);
@@ -111,10 +112,15 @@ public class OrderService {
             // Save order
             order = orderRepository.save(order);
 
+            // Create order items after order is managed/persisted
+            orderItemService.createOrderItems(order, cart.items);
+
             // Add status history
             orderStatusService.addStatusHistory(order, OrderStatus.PENDING, "Order created", "system");
 
             // Clear cart
+            log.info("Preparing Cart Service call for clearCart: userId={}, authTokenPresent={}",
+                    userId, token != null && !token.isBlank());
             cartServiceClient.clearCart(userId, token);
 
             log.info("Order created successfully: {}", orderNumber);
@@ -375,8 +381,12 @@ public class OrderService {
      */
     private String getCurrentToken() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getCredentials() instanceof String) {
-            return (String) auth.getCredentials();
+        if (auth instanceof JwtAuthenticationToken jwtAuth && jwtAuth.getToken() != null) {
+            return jwtAuth.getToken().getTokenValue();
+        }
+
+        if (auth != null && auth.getCredentials() instanceof String credentials && !credentials.isBlank()) {
+            return credentials;
         }
         return "";
     }

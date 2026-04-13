@@ -8,8 +8,8 @@ spring:
       context-path: /
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/orderdb
-    username: postgres
+    url: jdbc:postgresql://localhost:5433/orderdb
+    username: admin
     password: password
     driver-class-name: org.postgresql.Driver
 
@@ -28,8 +28,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/fashion
-          jwk-set-uri: http://localhost:8080/realms/fashion/protocol/openid-connect/certs
+          issuer-uri: http://localhost:8180/realms/ecommerce
+#          jwk-set-uri: http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs
 
   jackson:
     serialization:

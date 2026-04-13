@@ -8,9 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Update Order Status Request DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor

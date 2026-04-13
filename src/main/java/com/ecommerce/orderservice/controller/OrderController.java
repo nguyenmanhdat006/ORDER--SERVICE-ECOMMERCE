@@ -36,9 +36,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/**
- * Order Controller
- */
 @RestController
 @RequestMapping("/api/orders")
 @Slf4j
@@ -49,9 +46,6 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    /**
-     * POST /api/orders - Create order from cart
-     */
     @PostMapping
     @Operation(
             summary = "Create order from cart",
@@ -80,9 +74,6 @@ public class OrderController {
                 .body(ApiResponse.created(order));
     }
 
-    /**
-     * GET /api/orders - Get current user's orders (paginated)
-     */
     @GetMapping
     @Operation(
             summary = "Get my orders",
@@ -102,9 +93,6 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orders, "Orders retrieved successfully"));
     }
 
-    /**
-     * GET /api/orders/{id} - Get order details
-     */
     @GetMapping("/{id}")
     @Operation(
             summary = "Get order by ID",
@@ -131,9 +119,6 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(order, "Order retrieved successfully"));
     }
 
-    /**
-     * GET /api/orders/number/{orderNumber} - Get order by order number
-     */
     @GetMapping("/number/{orderNumber}")
     @Operation(
             summary = "Get order by order number",
@@ -147,9 +132,6 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(order, "Order retrieved successfully"));
     }
 
-    /**
-     * PUT /api/orders/{id}/status - Update order status (Admin only)
-     */
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -164,9 +146,6 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(order, "Order status updated successfully"));
     }
 
-    /**
-     * POST /api/orders/{id}/cancel - Cancel order
-     */
     @PostMapping("/{id}/cancel")
     @Operation(
             summary = "Cancel order",
@@ -180,9 +159,6 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("Order cancelled successfully"));
     }
 
-    /**
-     * GET /api/orders/search - Search orders (Admin only)
-     */
     @GetMapping("/search")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -216,9 +192,7 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orders, "Orders retrieved successfully"));
     }
 
-    /**
-     * GET /api/orders/summary - Get order statistics (Admin only)
-     */
+
     @GetMapping("/summary")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(

@@ -7,9 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Address Response DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor
