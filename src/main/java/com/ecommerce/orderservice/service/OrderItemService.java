@@ -30,7 +30,7 @@ public class OrderItemService {
     /**
      * Create order items from cart items
      */
-    public void createOrderItems(Order order, List<CartServiceClient.CartItem> cartItems) {
+    public List<OrderItem> createOrderItems(Order order, List<CartServiceClient.CartItem> cartItems) {
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartServiceClient.CartItem cartItem : cartItems) {
@@ -69,8 +69,9 @@ public class OrderItemService {
         }
 
         // Save all order items
-        orderItemRepository.saveAll(orderItems);
+        List<OrderItem> savedItems = orderItemRepository.saveAll(orderItems);
         log.info("Order items created for order: {}", order.getId());
+        return savedItems;
     }
 
     /**

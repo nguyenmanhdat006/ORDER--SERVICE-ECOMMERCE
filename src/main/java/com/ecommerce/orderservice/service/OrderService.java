@@ -9,10 +9,12 @@ import com.ecommerce.orderservice.dto.response.OrderResponse;
 import com.ecommerce.orderservice.dto.response.OrderSummaryResponse;
 import com.ecommerce.orderservice.dto.response.PageResponse;
 import com.ecommerce.orderservice.entity.Order;
+import com.ecommerce.orderservice.entity.OrderItem;
 import com.ecommerce.orderservice.enums.OrderStatus;
 import com.ecommerce.orderservice.enums.PaymentStatus;
 import com.ecommerce.orderservice.exception.BadRequestException;
 import com.ecommerce.orderservice.exception.ResourceNotFoundException;
+import com.ecommerce.orderservice.event.OrderEventProducer;
 import com.ecommerce.orderservice.mapper.OrderMapper;
 import com.ecommerce.orderservice.repository.OrderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,12 +29,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,6 +54,7 @@ public class OrderService {
     private final OrderItemService orderItemService;
     private final OrderStatusService orderStatusService;
     private final CartServiceClient cartServiceClient;
+    private final OrderEventProducer orderEventProducer;
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
 
@@ -69,11 +75,6 @@ public class OrderService {
             throw new BadRequestException("Cart is empty");
         }
 
-        // Validate cart not empty
-        if (cart.items.isEmpty()) {
-            throw new BadRequestException("Cannot create order from empty cart");
-        }
-
         try {
             // Generate order number
             String orderNumber = generateOrderNumber();
@@ -90,7 +91,7 @@ public class OrderService {
                             objectMapper.valueToTree(request.getBillingAddress()) :
                             objectMapper.valueToTree(request.getShippingAddress()))
                     .customerName(request.getShippingAddress().getFullName())
-                    .customerEmail(request.getShippingAddress().getFullName())
+                    .customerEmail(getCurrentUserEmail())
                     .customerPhone(request.getShippingAddress().getPhone())
                     .notes(request.getNotes())
                     .orderedAt(LocalDateTime.now())
@@ -99,7 +100,7 @@ public class OrderService {
             // Calculate totals
             BigDecimal subtotal = orderItemService.calculateItemsTotal(cart.items);
             BigDecimal discount = BigDecimal.ZERO;
-            BigDecimal shipping = calculateShipping(request.getShippingAddress());
+            BigDecimal shipping = calculateShipping();
             BigDecimal tax = calculateTax(subtotal);
             BigDecimal total = subtotal.subtract(discount).add(shipping).add(tax);
 
@@ -110,21 +111,19 @@ public class OrderService {
             order.setTotal(total);
 
             // Save order
-            order = orderRepository.save(order);
+                  Order savedOrder = orderRepository.save(order);
 
             // Create order items after order is managed/persisted
-            orderItemService.createOrderItems(order, cart.items);
+                  List<OrderItem> createdItems = orderItemService.createOrderItems(savedOrder, cart.items);
 
             // Add status history
-            orderStatusService.addStatusHistory(order, OrderStatus.PENDING, "Order created", "system");
+                  orderStatusService.addStatusHistory(savedOrder, OrderStatus.PENDING, "Order created", "system");
 
-            // Clear cart
-            log.info("Preparing Cart Service call for clearCart: userId={}, authTokenPresent={}",
-                    userId, token != null && !token.isBlank());
-            cartServiceClient.clearCart(userId, token);
+
+                  publishAfterCommit(() -> orderEventProducer.publishOrderCreated(savedOrder, createdItems));
 
             log.info("Order created successfully: {}", orderNumber);
-            return orderMapper.toResponse(order);
+                  return orderMapper.toResponse(savedOrder);
 
         } catch (Exception e) {
             log.error("Error creating order: ", e);
@@ -201,19 +200,21 @@ public class OrderService {
             order.setDeliveredAt(LocalDateTime.now());
         }
 
-        order = orderRepository.save(order);
+          Order savedOrder = orderRepository.save(order);
 
         // Add status history
-        orderStatusService.addStatusHistory(order, request.getStatus(),
+          orderStatusService.addStatusHistory(savedOrder, request.getStatus(),
                 request.getNotes() != null ? request.getNotes() : "Status updated", getCurrentUserId());
 
         // Restore stock if cancelled
         if (request.getStatus() == OrderStatus.CANCELLED && !oldStatus.equals(OrderStatus.CANCELLED)) {
-            restoreProductStock(order);
+            restoreProductStock(savedOrder);
         }
 
+          publishAfterCommit(() -> orderEventProducer.publishOrderStatusChanged(savedOrder, request.getStatus(), request.getNotes()));
+
         log.info("Order status updated: {} -> {}", oldStatus, request.getStatus());
-        return orderMapper.toResponse(order);
+          return orderMapper.toResponse(savedOrder);
     }
 
     /**
@@ -230,14 +231,16 @@ public class OrderService {
 
         // Update status to cancelled
         order.setStatus(OrderStatus.CANCELLED);
-        order = orderRepository.save(order);
+          Order savedOrder = orderRepository.save(order);
 
         // Restore stock
-        restoreProductStock(order);
+          restoreProductStock(savedOrder);
 
         // Add status history
-        orderStatusService.addStatusHistory(order, OrderStatus.CANCELLED,
+          orderStatusService.addStatusHistory(savedOrder, OrderStatus.CANCELLED,
                 "Cancelled: " + request.getReason(), getCurrentUserId());
+
+          publishAfterCommit(() -> orderEventProducer.publishOrderCancelled(savedOrder, request.getReason()));
 
         log.info("Order cancelled: {}", id);
     }
@@ -279,12 +282,12 @@ public class OrderService {
     public OrderSummaryResponse getOrderSummary() {
         Map<String, Integer> ordersByStatus = new HashMap<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
-        int totalOrders = 0;
+        long totalOrders = 0;
 
         for (OrderStatus status : OrderStatus.values()) {
             long count = orderRepository.countByStatus(status);
             if (count > 0) {
-                ordersByStatus.put(status.toString(), (int) count);
+                ordersByStatus.put(status.toString(), Math.toIntExact(count));
                 totalOrders += count;
             }
         }
@@ -296,7 +299,7 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return OrderSummaryResponse.builder()
-                .totalOrders(totalOrders)
+                .totalOrders(Math.toIntExact(totalOrders))
                 .totalAmount(totalAmount)
                 .ordersByStatus(ordersByStatus)
                 .build();
@@ -330,7 +333,7 @@ public class OrderService {
     /**
      * Calculate shipping based on address
      */
-    private BigDecimal calculateShipping(com.ecommerce.orderservice.dto.request.AddressRequest address) {
+    private BigDecimal calculateShipping() {
         // Simple implementation: flat shipping cost
         return BigDecimal.valueOf(10); // $10 flat shipping
     }
@@ -392,6 +395,43 @@ public class OrderService {
     }
 
     /**
+     * Get current user email from security context.
+     */
+    private String getCurrentUserEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth && jwtAuth.getToken() != null) {
+            String email = jwtAuth.getToken().getClaimAsString("email");
+            if (email != null && !email.isBlank()) {
+                return email;
+            }
+
+            String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
+            if (preferredUsername != null && !preferredUsername.isBlank()) {
+                return preferredUsername;
+            }
+        }
+
+        return auth != null ? auth.getName() : "anonymous";
+    }
+
+    /**
+     * Publish Kafka event after successful transaction commit.
+     */
+    private void publishAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            action.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
+    }
+
+    /**
      * Parse payment method from string
      */
     private com.ecommerce.orderservice.enums.PaymentMethod parsePaymentMethod(String method) {
@@ -402,4 +442,5 @@ public class OrderService {
         }
     }
 }
+
 
