@@ -31,6 +31,17 @@ spring:
           issuer-uri: http://localhost:8180/realms/ecommerce
 #          jwk-set-uri: http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      acks: all
+      properties:
+        spring:
+          json:
+            add:
+              type:
+                headers: true
+
   jackson:
     serialization:
       write-dates-as-timestamps: false

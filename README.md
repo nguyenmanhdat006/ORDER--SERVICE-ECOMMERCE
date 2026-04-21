@@ -7,6 +7,7 @@ Order Management Service cho hệ thống E-commerce Fashion
 - **Framework:** Spring Boot 3.2.2
 - **Database:** PostgreSQL 15
 - **Security:** OAuth2 + Keycloak
+- **Messaging:** Kafka
 - **Build Tool:** Maven
 - **Java Version:** 17
 
@@ -17,6 +18,7 @@ Order Management Service cho hệ thống E-commerce Fashion
 - Spring Security + OAuth2 Resource Server
 - Spring WebFlux (WebClient)
 - PostgreSQL Driver
+- Spring Kafka
 - Lombok
 - MapStruct
 - Validation
@@ -28,6 +30,7 @@ Order Management Service cho hệ thống E-commerce Fashion
 Order Service
 ├── Entities: Order, OrderItem, OrderStatusHistory
 ├── Services: OrderService, OrderItemService, OrderStatusService
+├── Events: Kafka producer + order lifecycle events
 ├── Clients: CartServiceClient, ProductServiceClient
 ├── Controller: OrderController
 └── Security: JWT-based authentication via Keycloak
@@ -107,12 +110,13 @@ CANCELLED  CANCELLED  CANCELLED
 - Java 17
 - Maven 3.6+
 - PostgreSQL 15
+- Kafka 3.x
 - Keycloak (running on localhost:8080)
 
 ### Run with Docker Compose
 
 ```bash
-# Start database and service
+# Start Kafka, database and service
 docker-compose up -d
 
 # Check logs
@@ -139,6 +143,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/orderdb
     username: postgres
     password: password
+
+  kafka:
+    bootstrap-servers: localhost:9092
   
   security:
     oauth2:
@@ -163,7 +170,8 @@ spring:
 10. Save order to database
 11. Add status history entry
 12. Clear cart via Cart Service
-13. Return order response
+13. Publish `order.created` event to Kafka after commit
+14. Return order response
 
 ### Cancel Order Flow
 
@@ -172,6 +180,7 @@ spring:
 3. Update status to CANCELLED
 4. Restore product stock
 5. Add status history entry
+6. Publish `order.cancelled` event to Kafka after commit
 
 
 ## Service Dependencies
@@ -180,6 +189,7 @@ spring:
 - **Product Service** (port 8082): Check stock, reduce stock
 - **User Service** (port 8083): Get user info
 - **Keycloak** (port 8080): JWT authentication
+- **Kafka** (port 9092): Order lifecycle events
 
 ## 📌 Notes
 
@@ -188,6 +198,7 @@ spring:
 - Stock is validated and reduced atomically
 - Order status transitions are validated
 - Cart is automatically cleared after order creation
+- Kafka events are published after the database transaction commits
 - Tax is calculated as 10% of subtotal
 - Shipping is flat rate ($10)
 
