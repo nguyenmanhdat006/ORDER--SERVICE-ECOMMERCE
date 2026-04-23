@@ -2,18 +2,21 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
   application:
     name: order-service
 
   server:
-    port: 8084
+    port: ${SERVER_PORT:8080}
     servlet:
       context-path: /
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:orderdb}
-    username: ${DB_USER:admin}
-    password: ${DB_PASSWORD:password}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mydb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -31,14 +34,18 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ecommerce}
-          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080/realms/example-realm}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/realms/example-realm/protocol/openid-connect/certs}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       acks: all
       properties:
+        security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+        sasl.mechanism: ${KAFKA_SASL_MECHANISM:PLAIN}
+        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username='${KAFKA_SASL_USERNAME:your-username}' password='${KAFKA_SASL_PASSWORD:your-password}';
+        ssl.truststore.location: ${KAFKA_SSL_CA_CERT_PATH:./ca.pem}
         spring:
           json:
             add:
@@ -53,7 +60,7 @@ spring:
       fail-on-unknown-properties: false
 
 server:
-  port: 8084
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /
   error:
