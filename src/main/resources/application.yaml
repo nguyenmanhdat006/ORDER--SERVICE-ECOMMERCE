@@ -102,3 +102,11 @@ springdoc:
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
 
+service:
+  cart:
+    url: ${CART_SERVICE_URL:http://localhost:8081}
+  product:
+    url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+  user:
+    url: ${USER_SERVICE_URL:http://localhost:8083}
+
