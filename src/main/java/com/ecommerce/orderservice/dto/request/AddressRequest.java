@@ -46,5 +46,11 @@ public class AddressRequest {
     @NotBlank(message = "Country is required")
     @Schema(description = "Country name", example = "Vietnam", required = true)
     private String country;
+
+    @Schema(description = "Shipping district ID used by shipping provider", example = "1542")
+    private Integer districtId;
+
+    @Schema(description = "Shipping ward code used by shipping provider", example = "21012")
+    private String wardCode;
 }
 

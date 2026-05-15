@@ -1,5 +1,8 @@
 package com.ecommerce.orderservice.config;
 
+/*
+Kafka topic declarations are disabled because the Order Service now uses REST API calls only.
+
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,4 +44,5 @@ public class KafkaTopicConfig {
                 .build();
     }
 }
+*/
 

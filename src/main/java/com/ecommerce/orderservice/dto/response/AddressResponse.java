@@ -23,5 +23,7 @@ public class AddressResponse {
     private String state;
     private String zipCode;
     private String country;
+    private Integer districtId;
+    private String wardCode;
 }
 
