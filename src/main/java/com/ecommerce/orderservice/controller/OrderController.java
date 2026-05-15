@@ -3,6 +3,7 @@ package com.ecommerce.orderservice.controller;
 import com.ecommerce.orderservice.dto.request.CancelOrderRequest;
 import com.ecommerce.orderservice.dto.request.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.request.OrderSearchRequest;
+import com.ecommerce.orderservice.dto.request.PaymentConfirmRequest;
 import com.ecommerce.orderservice.dto.request.UpdateOrderStatusRequest;
 import com.ecommerce.orderservice.dto.response.ApiResponse;
 import com.ecommerce.orderservice.dto.response.OrderResponse;
@@ -191,6 +192,46 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orders, "Orders retrieved successfully"));
     }
 
+    @PostMapping("/{id}/payment-confirmed")
+    @Operation(
+            summary = "Payment callback",
+            description = "Handles payment service callback and confirms order when payment is successful."
+    )
+    public ResponseEntity<ApiResponse<OrderResponse>> confirmPayment(
+            @Parameter(description = "Order UUID") @PathVariable UUID id,
+            @Valid @RequestBody PaymentConfirmRequest request) {
+        log.info("Payment callback received for order: {}", id);
+        OrderResponse order = orderService.confirmPayment(id, request);
+        return ResponseEntity.ok(ApiResponse.success(order, "Payment callback processed"));
+    }
+
+    @PostMapping("/{id}/shipment-confirmed")
+    @Operation(
+            summary = "Shipment created callback",
+            description = "Handles shipping service callback after shipment is created. Migration from Kafka events."
+    )
+    public ResponseEntity<ApiResponse<OrderResponse>> confirmShipment(
+            @Parameter(description = "Order UUID") @PathVariable UUID id,
+            @RequestParam(required = false) String shipmentId,
+            @RequestParam(required = false) String trackingNumber) {
+        log.info("Shipment callback received for order: {}, shipmentId: {}, trackingNumber: {}", 
+                id, shipmentId, trackingNumber);
+        OrderResponse order = orderService.confirmShipment(id, shipmentId, trackingNumber);
+        return ResponseEntity.ok(ApiResponse.success(order, "Shipment confirmed"));
+    }
+
+    @PostMapping("/{id}/delivery-completed")
+    @Operation(
+            summary = "Mark order as delivered",
+            description = "Marks order as DELIVERED and updates payment status to SUCCESS for COD orders. Migration from Kafka events."
+    )
+    public ResponseEntity<ApiResponse<OrderResponse>> markDeliveryCompleted(
+            @Parameter(description = "Order UUID") @PathVariable UUID id) {
+        log.info("Marking delivery completed for order: {}", id);
+        OrderResponse order = orderService.markDeliveryCompleted(id);
+        return ResponseEntity.ok(ApiResponse.success(order, "Order marked as delivered"));
+    }
+
 
     @GetMapping("/summary")
     @PreAuthorize("hasRole('ADMIN')")
@@ -203,5 +244,14 @@ public class OrderController {
         OrderSummaryResponse summary = orderService.getOrderSummary();
         return ResponseEntity.ok(ApiResponse.success(summary, "Summary retrieved successfully"));
     }
+//
+//    @PutMapping("/{id}/shipping")
+//    public ResponseEntity<?> updateShipping(
+//            @PathVariable UUID id,
+//            @RequestBody UpdateShippingRequest request) {
+//
+//        orderService.updateShipping(id, request);
+//        return ResponseEntity.ok().build();
+//    }
 }
 

@@ -92,11 +92,13 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
-		<!-- Kafka -->
+		<!-- Kafka disabled: Order Service now uses REST API only -->
+		<!--
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka</artifactId>
 		</dependency>
+		-->
 
 		<!-- Swagger OpenAPI -->
 		<dependency>

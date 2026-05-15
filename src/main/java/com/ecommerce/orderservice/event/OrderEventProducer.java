@@ -7,14 +7,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Component
@@ -27,10 +24,12 @@ public class OrderEventProducer {
     private static final String ORDER_SHIPPED_TOPIC = "order.shipped";
     private static final String ORDER_CANCELLED_TOPIC = "order.cancelled";
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
+    // DEPRECATED: Kafka publishing replaced with REST API calls
+    // Migration to REST API - Order creation now triggers shipping service synchronously
     public void publishOrderCreated(Order order, List<OrderItem> items) {
+        /*
         OrderCreatedEvent event = OrderCreatedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .eventType("ORDER_CREATED")
@@ -51,6 +50,8 @@ public class OrderEventProducer {
                 .build();
 
         publishEvent(ORDER_CREATED_TOPIC, order.getId().toString(), event);
+        */
+        log.debug("publishOrderCreated: Kafka publishing disabled, using REST API instead");
     }
 
     public void publishOrderStatusChanged(Order order, OrderStatus status, String reason) {
@@ -63,7 +64,9 @@ public class OrderEventProducer {
         }
     }
 
+    // DEPRECATED: Kafka publishing replaced with REST API calls
     public void publishOrderConfirmed(Order order) {
+        /*
         OrderConfirmedEvent event = OrderConfirmedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .eventType("ORDER_CONFIRMED")
@@ -77,9 +80,13 @@ public class OrderEventProducer {
                 .build();
 
         publishEvent(ORDER_CONFIRMED_TOPIC, order.getId().toString(), event);
+        */
+        log.debug("publishOrderConfirmed: Kafka publishing disabled, using REST API instead");
     }
 
+    // DEPRECATED: Kafka publishing replaced with REST API calls
     public void publishOrderShipped(Order order) {
+        /*
         OrderShippedEvent event = OrderShippedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .eventType("ORDER_SHIPPED")
@@ -92,9 +99,13 @@ public class OrderEventProducer {
                 .build();
 
         publishEvent(ORDER_SHIPPED_TOPIC, order.getId().toString(), event);
+        */
+        log.debug("publishOrderShipped: Kafka publishing disabled, using REST API instead");
     }
 
+    // DEPRECATED: Kafka publishing replaced with REST API calls
     public void publishOrderCancelled(Order order, String reason) {
+        /*
         OrderCancelledEvent event = OrderCancelledEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .eventType("ORDER_CANCELLED")
@@ -109,25 +120,12 @@ public class OrderEventProducer {
                 .build();
 
         publishEvent(ORDER_CANCELLED_TOPIC, order.getId().toString(), event);
+        */
+        log.debug("publishOrderCancelled: Kafka publishing disabled, using REST API instead");
     }
 
     private void publishEvent(String topic, String key, Object event) {
-        try {
-            CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send(topic, key, event);
-            future.whenComplete((result, ex) -> {
-                if (ex == null) {
-                    log.info("Published Kafka event: topic={}, key={}, partition={}, offset={}",
-                            topic,
-                            key,
-                            result.getRecordMetadata().partition(),
-                            result.getRecordMetadata().offset());
-                } else {
-                    log.error("Failed to publish Kafka event: topic={}, key={}", topic, key, ex);
-                }
-            });
-        } catch (Exception ex) {
-            log.error("Unexpected error while publishing Kafka event: topic={}, key={}", topic, key, ex);
-        }
+        log.debug("publishEvent: Kafka disabled - topic={}, key={}", topic, key);
     }
 
     private List<OrderCreatedEvent.OrderItemDto> mapOrderItems(List<OrderItem> items) {

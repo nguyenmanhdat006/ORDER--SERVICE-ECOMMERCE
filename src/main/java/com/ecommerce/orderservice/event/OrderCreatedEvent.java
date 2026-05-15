@@ -49,6 +49,8 @@ public class OrderCreatedEvent {
         private Integer quantity;
         private BigDecimal price;
         private BigDecimal subtotal;
+        private Integer districtid;
+        private String wardCode;
     }
 
     @Data

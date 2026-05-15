@@ -38,20 +38,16 @@ spring:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080/realms/example-realm}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/realms/example-realm/protocol/openid-connect/certs}
 
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
-    producer:
-      acks: all
-      properties:
-        security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
-        sasl.mechanism: ${KAFKA_SASL_MECHANISM:PLAIN}
-        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username='${KAFKA_SASL_USERNAME:your-username}' password='${KAFKA_SASL_PASSWORD:your-password}';
-        ssl.truststore.location: ${KAFKA_SSL_CA_CERT_PATH:./ca.pem}
-        spring:
-          json:
-            add:
-              type:
-                headers: true
+  # kafka:
+  #   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+  #   producer:
+  #     acks: all
+  #     properties:
+  #       spring:
+  #         json:
+  #           add:
+  #             type:
+  #               headers: true
 
   jackson:
     serialization:
@@ -103,4 +99,10 @@ service:
     url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
   user:
     url: ${USER_SERVICE_URL:http://localhost:8083}
+
+payment-service:
+  url: ${PAYMENT_SERVICE_URL:http://payment-service:8085}
+
+shipping-service:
+  url: ${SHIPPING_SERVICE_URL:http://shipping-service:8088}
 

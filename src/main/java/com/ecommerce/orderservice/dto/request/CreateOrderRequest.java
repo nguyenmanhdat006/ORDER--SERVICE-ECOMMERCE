@@ -20,8 +20,8 @@ import java.util.Optional;
 public class CreateOrderRequest {
 
     @NotBlank(message = "Payment method is required")
-    @Schema(description = "Payment method", example = "CREDIT_CARD",
-            allowableValues = {"CREDIT_CARD", "DEBIT_CARD", "PAYPAL", "BANK_TRANSFER", "CASH_ON_DELIVERY", "VNPAY", "MOMO"})
+    @Schema(description = "Payment method", example = "COD",
+            allowableValues = {"COD", "CASH_ON_DELIVERY", "VNPAY", "CREDIT_CARD", "DEBIT_CARD", "PAYPAL", "BANK_TRANSFER", "MOMO"})
     private String paymentMethod;
 
     @Valid

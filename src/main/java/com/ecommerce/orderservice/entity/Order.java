@@ -56,6 +56,18 @@ public class Order {
     @Column(name = "payment_method", nullable = false)
     private PaymentMethod paymentMethod;
 
+    @Column(name = "payment_id", length = 50)
+    private String paymentId;
+
+    @Column(name = "payment_url", length = 1000)
+    private String paymentUrl;
+
+    @Column(name = "shipment_id", length = 50)
+    private String shipmentId;
+
+    @Column(name = "tracking_number", length = 100)
+    private String trackingNumber;
+
     @Column(name = "subtotal", nullable = false, precision = 19, scale = 2)
     private BigDecimal subtotal;
 
