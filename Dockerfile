@@ -1,25 +1,23 @@
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM maven:3.9.9-eclipse-temurin-17 AS builder
+WORKDIR /workspace
 
-WORKDIR /app
-
-COPY mvnw .
-COPY .mvn .mvn
 COPY pom.xml .
+RUN mvn -B -ntp dependency:go-offline
 
-RUN chmod +x mvnw
-RUN ./mvnw dependency:go-offline -B
+COPY src ./src
+RUN mvn -B -ntp clean package -DskipTests \
+    && find target -maxdepth 1 -type f -name "*.jar" ! -name "*.original" -exec cp {} /workspace/app.jar \;
 
-COPY src src
-
-RUN ./mvnw package -DskipTests
-
-FROM eclipse-temurin:17-jre-alpine
-
+FROM eclipse-temurin:17-jre AS runtime
 WORKDIR /app
 
-COPY --from=builder /app/target/*.jar app.jar
+RUN useradd --system --create-home --uid 1001 appuser
+USER appuser
 
-EXPOSE 8084
+COPY --from=builder /workspace/app.jar ./app.jar
+COPY ca.pem ./ca.pem
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+EXPOSE 8081
+ENV JAVA_OPTS=""
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
 

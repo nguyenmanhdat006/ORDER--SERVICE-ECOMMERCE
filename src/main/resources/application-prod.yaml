@@ -6,12 +6,12 @@ spring:
     name: order-service
 
   server:
-    port: 8084
+    port: ${SERVER_PORT:8080}
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orderdb}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:password}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mydb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -35,8 +35,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/fashion}
-          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8080/realms/fashion/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080/realms/example-realm}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/realms/example-realm/protocol/openid-connect/certs}
 
   # kafka:
   #   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
@@ -57,7 +57,7 @@ spring:
       fail-on-unknown-properties: false
 
 server:
-  port: 8084
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /
   error:

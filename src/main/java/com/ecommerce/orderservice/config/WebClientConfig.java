@@ -26,6 +26,14 @@ public class WebClientConfig {
 
     @Value("${shipping-service.url:http://localhost:8088}")
     private String shippingServiceUrl;
+        @Value("${service.cart.url:http://localhost:8081}")
+        private String cartServiceUrl;
+
+        @Value("${service.product.url:http://localhost:8082}")
+        private String productServiceUrl;
+
+        @Value("${service.user.url:http://localhost:8083}")
+        private String userServiceUrl;
 
     @Bean("cartServiceWebClient")
     public WebClient cartServiceWebClient() {
