@@ -3,6 +3,7 @@ package com.ecommerce.orderservice.controller;
 import com.ecommerce.orderservice.dto.request.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.request.PaymentConfirmRequest;
 import com.ecommerce.orderservice.dto.response.OrderResponse;
+import com.ecommerce.orderservice.dto.response.PageResponse;
 import com.ecommerce.orderservice.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,14 @@ public class OrderController {
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id) {
         log.info("Fetching order: {}", id);
         return ResponseEntity.ok(orderService.getOrderById(id));
+    }
+
+    @GetMapping("/my-orders")
+    public ResponseEntity<PageResponse<OrderResponse>> getMyOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("Fetching orders for current user, page={}, size={}", page, size);
+        return ResponseEntity.ok(orderService.getMyOrders(page, size));
     }
 }
 

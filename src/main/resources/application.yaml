@@ -5,14 +5,9 @@ spring:
   application:
     name: order-service
 
-  server:
-    port: 8084
-    servlet:
-      context-path: /
-
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orderdb}
-    username: ${DB_USER:nguyendat}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/orderdb}
+    username: ${DB_USERNAME:nguyendat}
     password: ${DB_PASSWORD:nguyendat}
     driver-class-name: org.postgresql.Driver
 
@@ -56,7 +51,7 @@ spring:
       fail-on-unknown-properties: false
 
 server:
-  port: 8084
+  port: ${SERVER_PORT:8084}
   servlet:
     context-path: /
   error:
@@ -75,9 +70,9 @@ management:
 logging:
   level:
     root: INFO
-    com.ecommerce: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.ecommerce: ${LOGGING_LEVEL_COM_ECOMMERCE:DEBUG}
+    org.springframework.security: ${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY:DEBUG}
+    org.hibernate.SQL: ${LOGGING_LEVEL_ORG_HIBERNATE_SQL:DEBUG}
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 # Swagger/OpenAPI Configuration
@@ -111,4 +106,3 @@ payment-service:
 
 shipping-service:
   url: ${SHIPPING_SERVICE_URL:http://localhost:8088}
-
