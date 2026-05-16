@@ -15,6 +15,7 @@ RUN useradd --system --create-home --uid 1001 appuser
 USER appuser
 
 COPY --from=builder /workspace/app.jar ./app.jar
+COPY ca.pem ./ca.pem
 
 EXPOSE 8081
 ENV JAVA_OPTS=""
