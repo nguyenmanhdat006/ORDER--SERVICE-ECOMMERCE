@@ -10,9 +10,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentConfirmRequest {
-    private String paymentId;
-
-    private String status;
+    private String paymentNumber;
+    private String transactionId;
 }
 
 

@@ -15,15 +15,11 @@ import lombok.Setter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AddressResponse {
 
-    private String fullName;
+    private String recipientName;
     private String phone;
-    private String addressLine1;
-    private String addressLine2;
+    private String address;
     private String city;
-    private String state;
+    private String province;
     private String zipCode;
-    private String country;
-    private Integer districtId;
-    private String wardCode;
 }
 

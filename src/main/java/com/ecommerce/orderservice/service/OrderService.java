@@ -10,6 +10,7 @@ import com.ecommerce.orderservice.dto.request.CancelOrderRequest;
 import com.ecommerce.orderservice.dto.request.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.request.OrderSearchRequest;
 import com.ecommerce.orderservice.dto.request.PaymentConfirmRequest;
+import com.ecommerce.orderservice.dto.request.OrderItemRequest;
 import com.ecommerce.orderservice.dto.request.UpdateOrderStatusRequest;
 import com.ecommerce.orderservice.dto.response.OrderResponse;
 import com.ecommerce.orderservice.dto.response.OrderSummaryResponse;
@@ -72,13 +73,6 @@ public class OrderService {
 
     public OrderResponse createOrder(CreateOrderRequest request) {
         String userId = getCurrentUserId();
-        String token = getCurrentToken();
-        CartServiceClient.CartResponse cart = cartServiceClient.getCart(userId, token);
-
-        if (cart == null || cart.items == null || cart.items.isEmpty()) {
-            throw new BadRequestException("Cart is empty");
-        }
-
         try {
             String orderNumber = generateOrderNumber();
             PaymentMethod paymentMethod = parsePaymentMethod(request.getPaymentMethod());
@@ -90,19 +84,17 @@ public class OrderService {
                     .paymentStatus(PaymentStatus.PENDING)
                     .paymentMethod(paymentMethod)
                     .shippingAddress(objectMapper.valueToTree(request.getShippingAddress()))
-                    .billingAddress(request.getBillingAddress() != null
-                            ? objectMapper.valueToTree(request.getBillingAddress())
-                            : objectMapper.valueToTree(request.getShippingAddress()))
-                    .customerName(request.getShippingAddress().getFullName())
+                    .billingAddress(null)
+                    .customerName(request.getShippingAddress().getRecipientName())
                     .customerEmail(getCurrentUserEmail())
                     .customerPhone(request.getShippingAddress().getPhone())
-                    .notes(request.getNotes())
+                    .notes(request.getNote())
                     .orderedAt(LocalDateTime.now())
                     .build();
 
-            BigDecimal subtotal = orderItemService.calculateItemsTotal(cart.items);
+            BigDecimal subtotal = orderItemService.calculateItemsTotalFromRequests(request.getItems());
             BigDecimal discount = BigDecimal.ZERO;
-            BigDecimal shipping = calculateShipping(request.getShippingAddress(), cart.items);
+            BigDecimal shipping = calculateShipping(request.getShippingAddress(), request.getItems(), subtotal);
             BigDecimal tax = calculateTax(subtotal);
             BigDecimal total = subtotal.subtract(discount).add(shipping).add(tax);
 
@@ -113,7 +105,7 @@ public class OrderService {
             order.setTotal(total);
 
             Order savedOrder = orderRepository.save(order);
-            List<OrderItem> createdItems = orderItemService.createOrderItems(savedOrder, cart.items);
+            List<OrderItem> createdItems = orderItemService.createOrderItemsFromRequests(savedOrder, request.getItems());
             orderStatusService.addStatusHistory(savedOrder, OrderStatus.PENDING, "Order created", "system");
 
             PaymentResponse payment = paymentServiceClient.createPayment(
@@ -122,73 +114,16 @@ public class OrderService {
                             .orderNumber(savedOrder.getOrderNumber())
                             .userId(savedOrder.getUserId())
                             .amount(savedOrder.getTotal())
-                            .paymentMethod(savedOrder.getPaymentMethod().name())
-                            .description("Payment for order " + savedOrder.getOrderNumber())
+                            .paymentMethod(savedOrder.getPaymentMethod().name().equals("CASH_ON_DELIVERY") ? "COD" : "VNPAY")
                             .build()
             );
 
             savedOrder.setPaymentId(resolvePaymentId(payment));
             savedOrder.setPaymentUrl(payment.getPaymentUrl());
+            Order persistedOrder = orderRepository.save(savedOrder);
 
-            if (savedOrder.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
-                savedOrder.setStatus(OrderStatus.CONFIRMED);
-                savedOrder.setConfirmedAt(LocalDateTime.now());
-                savedOrder.setPaymentStatus(PaymentStatus.PENDING);
-                orderStatusService.addStatusHistory(savedOrder, OrderStatus.CONFIRMED, "Order confirmed for COD", "system");
-                
-                // MIGRATION: Kafka events replaced with REST API calls
-                // savedOrder = orderRepository.save(savedOrder) will be done after shipment creation
-            }
-
-            orderRepository.save(savedOrder);
-            
-            // MIGRATION: Kafka events deprecated - now using REST API calls
-            // publishAfterCommit(() -> orderEventProducer.publishOrderCreated(savedOrder, createdItems));
-            // if (savedOrder.getStatus() == OrderStatus.CONFIRMED) {
-            //     publishAfterCommit(() -> orderEventProducer.publishOrderConfirmed(savedOrder));
-            // }
-
-            // For COD orders: synchronously create shipment instead of async
-            if (savedOrder.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
-                try {
-                    CreateShipmentRequest shipmentRequest = CreateShipmentRequest.builder()
-                            .orderId(savedOrder.getId().toString())
-                            .orderNumber(savedOrder.getOrderNumber())
-                            .toName(savedOrder.getCustomerName())
-                            .toPhone(savedOrder.getCustomerPhone())
-                            .toAddress(orderPostProcessService.extractAddress(savedOrder.getShippingAddress()))
-                            .toDistrictId(orderPostProcessService.extractDistrictId(savedOrder.getShippingAddress()))
-                            .toWardCode(orderPostProcessService.extractWardCode(savedOrder.getShippingAddress()))
-                            .weight(orderPostProcessService.calculateOrderWeight(savedOrder.getId()))
-                            .codAmount(savedOrder.getTotal())
-                            .note("Order " + savedOrder.getOrderNumber())
-                            .build();
-
-                    CreateShipmentResponse shipmentResponse = shippingServiceClient.createShipment(shipmentRequest);
-                    savedOrder.setShipmentId(shipmentResponse.getShipmentNumber());
-                    savedOrder.setTrackingNumber(shipmentResponse.getTrackingNumber());
-                    orderRepository.save(savedOrder);
-                    log.info("Shipment created for COD order: {}, tracking: {}", 
-                            savedOrder.getOrderNumber(), shipmentResponse.getTrackingNumber());
-                } catch (Exception e) {
-                    log.error("Failed to create shipment for COD order: {}", savedOrder.getOrderNumber(), e);
-                    throw new BadRequestException("Failed to create shipment: " + e.getMessage());
-                }
-            } else {
-                // For other payment methods: async post-processing
-                publishAfterCommit(() -> orderPostProcessService.executePostOrderOperations(savedOrder.getId(), token));
-            }
-            
-            // Clear cart asynchronously for all orders
-            publishAfterCommit(() -> {
-                try {
-                    cartServiceClient.clearCart(savedOrder.getUserId(), token);
-                } catch (Exception e) {
-                    log.warn("Failed to clear cart for order {}", savedOrder.getOrderNumber(), e);
-                }
-            });
-            
-            return orderMapper.toResponse(savedOrder);
+            log.info("Order created: {}, items: {}", persistedOrder.getOrderNumber(), createdItems.size());
+            return orderMapper.toResponse(persistedOrder);
         } catch (Exception e) {
             log.error("Error creating order", e);
             throw new BadRequestException("Failed to create order: " + e.getMessage());
@@ -199,8 +134,8 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        if (request.getPaymentId() != null && order.getPaymentId() != null
-                && !request.getPaymentId().equals(order.getPaymentId())) {
+        if (request.getPaymentNumber() != null && order.getPaymentId() != null
+                && !request.getPaymentNumber().equals(order.getPaymentId())) {
             throw new BadRequestException("Payment does not match order");
         }
 
@@ -208,31 +143,37 @@ public class OrderService {
             return orderMapper.toResponse(order);
         }
 
-        String incomingStatus = request.getStatus() == null
-                ? "PAID"
-                : request.getStatus().toUpperCase(Locale.ROOT);
-
-        if (isPaymentSuccess(incomingStatus)) {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            if (request.getPaymentId() != null && !request.getPaymentId().isBlank()) {
-                order.setPaymentId(request.getPaymentId());
-            }
-
-            if (order.getStatus() == OrderStatus.PENDING) {
-                order.setStatus(OrderStatus.CONFIRMED);
-                order.setConfirmedAt(LocalDateTime.now());
-                orderStatusService.addStatusHistory(order, OrderStatus.CONFIRMED,
-                        "Order confirmed from payment callback", "payment-service");
-            }
-
-            Order savedOrder = orderRepository.save(order);
-            publishAfterCommit(() -> orderEventProducer.publishOrderConfirmed(savedOrder));
-            publishAfterCommit(() -> orderPostProcessService.executePostOrderOperations(savedOrder.getId(), ""));
-            return orderMapper.toResponse(savedOrder);
+        order.setPaymentStatus(PaymentStatus.PAID);
+        if (request.getPaymentNumber() != null && !request.getPaymentNumber().isBlank()) {
+            order.setPaymentId(request.getPaymentNumber());
+        }
+        if (request.getTransactionId() != null && !request.getTransactionId().isBlank()) {
+            order.setTrackingNumber(request.getTransactionId());
         }
 
-        order.setPaymentStatus(PaymentStatus.FAILED);
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.CONFIRMED);
+            order.setConfirmedAt(LocalDateTime.now());
+            orderStatusService.addStatusHistory(order, OrderStatus.CONFIRMED,
+                    "Order confirmed from payment callback", "payment-service");
+        }
+
         return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    public OrderResponse confirmOrder(UUID id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (order.getStatus() == OrderStatus.CONFIRMED) {
+            return orderMapper.toResponse(order);
+        }
+
+        order.setStatus(OrderStatus.CONFIRMED);
+        order.setConfirmedAt(LocalDateTime.now());
+        Order savedOrder = orderRepository.save(order);
+        orderStatusService.addStatusHistory(savedOrder, OrderStatus.CONFIRMED, "Order confirmed manually", getCurrentUserId());
+        return orderMapper.toResponse(savedOrder);
     }
 
     public PageResponse<OrderResponse> getMyOrders(int page, int size) {
@@ -285,15 +226,11 @@ public class OrderService {
         orderStatusService.addStatusHistory(savedOrder, OrderStatus.DELIVERED, 
                 "Order delivered", "shipping-service");
 
-        // For COD orders: Update payment status to SUCCESS
-        if (savedOrder.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY) {
-            try {
-                paymentServiceClient.updatePaymentStatus(savedOrder.getId().toString(), "SUCCESS");
-                log.info("Updated payment status to SUCCESS for COD order: {}", savedOrder.getOrderNumber());
-            } catch (Exception e) {
-                log.error("Failed to update payment status for order: {}", savedOrder.getOrderNumber(), e);
-                // Continue - payment update failure shouldn't block delivery completion
-            }
+        try {
+            paymentServiceClient.markPaymentSuccess(savedOrder.getOrderNumber());
+            log.info("Updated payment status to SUCCESS for order: {}", savedOrder.getOrderNumber());
+        } catch (Exception e) {
+            log.error("Failed to update payment status for order: {}", savedOrder.getOrderNumber(), e);
         }
 
         log.info("Delivery completed for order: {}", order.getOrderNumber());
@@ -420,47 +357,26 @@ public class OrderService {
         return subtotal.multiply(BigDecimal.valueOf(0.1));
     }
 
-    private BigDecimal calculateShipping(AddressRequest shippingAddress, List<CartServiceClient.CartItem> cartItems) {
+    private BigDecimal calculateShipping(AddressRequest shippingAddress, List<OrderItemRequest> items, BigDecimal orderValue) {
         try {
             CalculateFeeRequest request = CalculateFeeRequest.builder()
-                    .toDistrictId(resolveDistrictId(shippingAddress))
-                    .toWardCode(resolveWardCode(shippingAddress))
-                    .weight(calculateCartWeight(cartItems))
+                    .city(shippingAddress.getCity())
+                    .province(shippingAddress.getProvince())
+                    .weight(calculateOrderWeight(items))
+                    .orderValue(orderValue)
                     .build();
 
             CalculateFeeResponse response = shippingServiceClient.calculateFee(request);
-            return response.getFee() != null ? response.getFee() : BigDecimal.valueOf(10);
+            return response.getShippingFee() != null ? response.getShippingFee() : BigDecimal.valueOf(10);
         } catch (Exception ex) {
             log.warn("Fallback to flat shipping fee because shipping service is unavailable");
             return BigDecimal.valueOf(10);
         }
     }
 
-    private int calculateCartWeight(List<CartServiceClient.CartItem> cartItems) {
-        int quantity = cartItems.stream().map(item -> item.quantity != null ? item.quantity : 0).reduce(0, Integer::sum);
+    private int calculateOrderWeight(List<OrderItemRequest> items) {
+        int quantity = items.stream().map(item -> item.getQuantity() != null ? item.getQuantity() : 0).reduce(0, Integer::sum);
         return Math.max(quantity, 1) * 1000;
-    }
-
-    private Integer resolveDistrictId(AddressRequest shippingAddress) {
-        if (shippingAddress.getDistrictId() != null) {
-            return shippingAddress.getDistrictId();
-        }
-        try {
-            return Integer.parseInt(shippingAddress.getZipCode());
-        } catch (Exception ex) {
-            return 0;
-        }
-    }
-
-    private String resolveWardCode(AddressRequest shippingAddress) {
-        if (shippingAddress.getWardCode() != null && !shippingAddress.getWardCode().isBlank()) {
-            return shippingAddress.getWardCode();
-        }
-        return shippingAddress.getState() != null ? shippingAddress.getState() : "";
-    }
-
-    private boolean isPaymentSuccess(String status) {
-        return "PAID".equals(status) || "SUCCESS".equals(status) || "COMPLETED".equals(status);
     }
 
     private String resolvePaymentId(PaymentResponse payment) {

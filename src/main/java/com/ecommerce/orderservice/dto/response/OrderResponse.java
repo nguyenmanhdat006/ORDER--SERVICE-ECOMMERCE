@@ -22,14 +22,11 @@ public class OrderResponse {
 
     private UUID id;
     private String orderNumber;
-    private String userId;
     private String status;
     private String paymentStatus;
     private String paymentMethod;
-    private String paymentId;
     private String paymentUrl;
     private String shipmentId;
-    private String trackingNumber;
     private List<OrderItemResponse> items;
     private BigDecimal subtotal;
     private BigDecimal discount;
@@ -37,16 +34,6 @@ public class OrderResponse {
     private BigDecimal tax;
     private BigDecimal total;
     private AddressResponse shippingAddress;
-    private AddressResponse billingAddress;
-    private String customerName;
-    private String customerEmail;
-    private String customerPhone;
-    private String notes;
-    private LocalDateTime orderedAt;
-    private LocalDateTime confirmedAt;
-    private LocalDateTime shippedAt;
-    private LocalDateTime deliveredAt;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }
 

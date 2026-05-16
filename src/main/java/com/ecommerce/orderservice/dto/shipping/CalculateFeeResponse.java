@@ -12,8 +12,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class CalculateFeeResponse {
-    private String provider;
-    private BigDecimal fee;
+    private BigDecimal shippingFee;
     private Integer estimatedDays;
 }
 

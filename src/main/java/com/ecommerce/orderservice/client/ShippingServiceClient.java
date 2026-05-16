@@ -19,7 +19,7 @@ public class ShippingServiceClient {
     private final WebClient shippingServiceWebClient;
 
     public CalculateFeeResponse calculateFee(CalculateFeeRequest request) {
-        log.info("Calculating shipping fee for district: {}", request.getToDistrictId());
+        log.info("Calculating shipping fee for city: {}, province: {}", request.getCity(), request.getProvince());
 
         try {
             CalculateFeeResponse response = shippingServiceWebClient.post()
@@ -29,11 +29,11 @@ public class ShippingServiceClient {
                     .bodyToMono(CalculateFeeResponse.class)
                     .block();
 
-            if (response == null || response.getFee() == null) {
+            if (response == null || response.getShippingFee() == null) {
                 throw new IllegalStateException("Shipping service returned invalid fee response");
             }
 
-            log.info("Shipping fee calculated: {}", response.getFee());
+            log.info("Shipping fee calculated: {}", response.getShippingFee());
             return response;
         } catch (Exception e) {
             log.error("Error calculating shipping fee", e);
@@ -57,7 +57,7 @@ public class ShippingServiceClient {
             }
 
             log.info("Shipment created for order: {}, tracking: {}",
-                    request.getOrderNumber(), response.getTrackingNumber());
+                    request.getOrderNumber(), response.getShipmentNumber());
             return response;
         } catch (Exception e) {
             log.error("Error creating shipment for order: {}", request.getOrderNumber(), e);

@@ -26,11 +26,10 @@ public abstract class OrderMapper {
     protected ObjectMapper objectMapper;
 
     @Mapping(target = "status", expression = "java(order.getStatus().toString())")
-    @Mapping(target = "paymentStatus", expression = "java(order.getPaymentStatus().toString())")
-    @Mapping(target = "paymentMethod", expression = "java(order.getPaymentMethod().toString())")
+    @Mapping(target = "paymentStatus", expression = "java(mapPaymentStatus(order.getPaymentStatus()))")
+    @Mapping(target = "paymentMethod", expression = "java(mapPaymentMethod(order.getPaymentMethod()))")
     @Mapping(target = "items", expression = "java(mapOrderItems(order.getItems()))")
     @Mapping(target = "shippingAddress", expression = "java(parseAddress(order.getShippingAddress()))")
-    @Mapping(target = "billingAddress", expression = "java(parseAddress(order.getBillingAddress()))")
     public abstract OrderResponse toResponse(Order order);
 
     @Mapping(target = "productVariantId", source = "productVariantId")
@@ -66,6 +65,29 @@ public abstract class OrderMapper {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    protected String mapPaymentStatus(com.ecommerce.orderservice.enums.PaymentStatus status) {
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case PENDING -> "PENDING";
+            case PAID -> "SUCCESS";
+            case FAILED -> "FAILED";
+            case REFUNDED -> "REFUNDED";
+        };
+    }
+
+    protected String mapPaymentMethod(com.ecommerce.orderservice.enums.PaymentMethod method) {
+        if (method == null) {
+            return null;
+        }
+        return switch (method) {
+            case CASH_ON_DELIVERY -> "COD";
+            case VNPAY -> "VNPAY";
+            default -> method.name();
+        };
     }
 }
 
