@@ -45,16 +45,35 @@ public class PaymentServiceClient {
         log.info("Updating payment status for order: {}, newStatus: {}", orderId, status);
 
         try {
-            paymentServiceWebClient.put()
-                    .uri("/api/payments/order/{orderId}/status?status={status}", orderId, status)
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
+            if ("SUCCESS".equalsIgnoreCase(status)) {
+                paymentServiceWebClient.put()
+                        .uri("/api/payments/order/{orderNumber}/success", orderId)
+                        .retrieve()
+                        .toBodilessEntity()
+                        .block();
+            }
 
             log.info("Payment status updated for order: {}, newStatus: {}", orderId, status);
         } catch (Exception e) {
             log.error("Error updating payment status for order: {}", orderId, e);
             throw new RuntimeException("Failed to update payment status", e);
+        }
+    }
+
+    public void markPaymentSuccess(String orderNumber) {
+        log.info("Marking payment success for orderNumber={}", orderNumber);
+
+        try {
+            paymentServiceWebClient.put()
+                    .uri("/api/payments/order/{orderNumber}/success", orderNumber)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+
+            log.info("Payment marked success for orderNumber={}", orderNumber);
+        } catch (Exception e) {
+            log.error("Error marking payment success for orderNumber={}", orderNumber, e);
+            throw new RuntimeException("Failed to mark payment success", e);
         }
     }
 }

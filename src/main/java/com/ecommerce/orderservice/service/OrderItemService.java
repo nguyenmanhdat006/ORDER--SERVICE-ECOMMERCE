@@ -2,6 +2,7 @@ package com.ecommerce.orderservice.service;
 
 import com.ecommerce.orderservice.client.CartServiceClient;
 import com.ecommerce.orderservice.client.ProductServiceClient;
+import com.ecommerce.orderservice.dto.request.OrderItemRequest;
 import com.ecommerce.orderservice.entity.Order;
 import com.ecommerce.orderservice.entity.OrderItem;
 import com.ecommerce.orderservice.exception.BadRequestException;
@@ -74,6 +75,30 @@ public class OrderItemService {
         return savedItems;
     }
 
+    public List<OrderItem> createOrderItemsFromRequests(Order order, List<OrderItemRequest> items) {
+        List<OrderItem> orderItems = new ArrayList<>();
+
+        for (OrderItemRequest itemRequest : items) {
+            BigDecimal price = itemRequest.getPrice() != null ? itemRequest.getPrice() : BigDecimal.ZERO;
+            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(itemRequest.getQuantity() != null ? itemRequest.getQuantity() : 0));
+
+            OrderItem orderItem = OrderItem.builder()
+                    .order(order)
+                    .productId(itemRequest.getProductId())
+                    .productName(itemRequest.getProductName())
+                    .quantity(itemRequest.getQuantity())
+                    .price(price)
+                    .subtotal(subtotal)
+                    .build();
+
+            orderItems.add(orderItem);
+        }
+
+        List<OrderItem> savedItems = orderItemRepository.saveAll(orderItems);
+        log.info("Order items created from request for order: {}", order.getId());
+        return savedItems;
+    }
+
     /**
      * Get order items for an order
      */
@@ -87,6 +112,16 @@ public class OrderItemService {
     public BigDecimal calculateItemsTotal(List<CartServiceClient.CartItem> cartItems) {
         return cartItems.stream()
                 .map(item -> item.subtotal != null ? item.subtotal : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal calculateItemsTotalFromRequests(List<OrderItemRequest> items) {
+        return items.stream()
+                .map(item -> {
+                    BigDecimal price = item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO;
+                    int quantity = item.getQuantity() != null ? item.getQuantity() : 0;
+                    return price.multiply(BigDecimal.valueOf(quantity));
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

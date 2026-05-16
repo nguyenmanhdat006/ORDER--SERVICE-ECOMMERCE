@@ -17,6 +17,5 @@ public class CreatePaymentRequest {
     private String userId;
     private BigDecimal amount;
     private String paymentMethod;
-    private String description;
 }
 

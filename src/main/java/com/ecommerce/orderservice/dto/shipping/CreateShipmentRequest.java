@@ -14,13 +14,12 @@ import java.math.BigDecimal;
 public class CreateShipmentRequest {
     private String orderId;
     private String orderNumber;
-    private String toName;
-    private String toPhone;
-    private String toAddress;
-    private Integer toDistrictId;
-    private String toWardCode;
-    private Integer weight;
+    private String recipientName;
+    private String phone;
+    private String address;
+    private BigDecimal shippingFee;
     private BigDecimal codAmount;
+    private Integer estimatedDays;
     private String note;
 }
 

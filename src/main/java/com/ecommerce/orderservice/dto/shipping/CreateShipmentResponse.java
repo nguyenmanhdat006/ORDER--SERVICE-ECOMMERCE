@@ -12,6 +12,12 @@ import lombok.NoArgsConstructor;
 public class CreateShipmentResponse {
     private Long shipmentId;
     private String shipmentNumber;
-    private String trackingNumber;
+    private String orderId;
+    private String orderNumber;
+    private String status;
+    private java.math.BigDecimal shippingFee;
+    private java.math.BigDecimal codAmount;
+    private java.time.LocalDateTime estimatedDelivery;
+    private java.time.LocalDateTime createdAt;
 }
 

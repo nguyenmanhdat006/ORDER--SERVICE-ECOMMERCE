@@ -31,8 +31,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ecommerce}
-          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://usw2.auth.ac/auth/realms/ecommerce}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:https://usw2.auth.ac/auth/realms/ecommerce/protocol/openid-connect/certs}
 
   # kafka:
   #   bootstrap-servers: localhost:9093
