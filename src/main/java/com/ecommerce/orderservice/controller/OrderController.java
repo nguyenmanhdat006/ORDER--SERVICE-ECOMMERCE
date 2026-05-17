@@ -35,6 +35,14 @@ public class OrderController {
         return ResponseEntity.ok(orderService.confirmOrder(id));
     }
 
+    @PutMapping("/{id}/status")
+    public ResponseEntity<OrderResponse> updateOrderStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.ecommerce.orderservice.dto.request.UpdateOrderStatusRequest request) {
+        log.info("Updating order status for {}: {}", id, request.getStatus());
+        return ResponseEntity.ok(orderService.updateOrderStatus(id, request));
+    }
+
     @PutMapping("/{id}/payment-confirmed")
     public ResponseEntity<OrderResponse> confirmPayment(
             @PathVariable UUID id,
@@ -47,6 +55,15 @@ public class OrderController {
     public ResponseEntity<OrderResponse> markDeliveryCompleted(@PathVariable UUID id) {
         log.info("Marking delivery completed for order: {}", id);
         return ResponseEntity.ok(orderService.markDeliveryCompleted(id));
+    }
+
+    @PutMapping("/{id}/shipping-status")
+    public ResponseEntity<OrderResponse> updateShippingStatus(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, String> payload) {
+        String status = payload.get("status");
+        log.info("Updating shipping status for order: {} to {}", id, status);
+        return ResponseEntity.ok(orderService.updateShippingStatus(id, status));
     }
 
     @GetMapping("/{id}")

@@ -65,6 +65,9 @@ public class Order {
     @Column(name = "shipment_id", length = 50)
     private String shipmentId;
 
+    @Column(name = "shipment_status", length = 50)
+    private String shipmentStatus;
+
     @Column(name = "tracking_number", length = 100)
     private String trackingNumber;
 

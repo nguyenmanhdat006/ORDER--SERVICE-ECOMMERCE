@@ -158,7 +158,12 @@ public class OrderService {
                     "Order confirmed from payment callback", "payment-service");
         }
 
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order savedOrder = orderRepository.save(order);
+        if (savedOrder.getStatus() == OrderStatus.CONFIRMED) {
+            createShipmentForOrder(savedOrder);
+        }
+
+        return orderMapper.toResponse(savedOrder);
     }
 
     public OrderResponse confirmOrder(UUID id) {
@@ -173,6 +178,9 @@ public class OrderService {
         order.setConfirmedAt(LocalDateTime.now());
         Order savedOrder = orderRepository.save(order);
         orderStatusService.addStatusHistory(savedOrder, OrderStatus.CONFIRMED, "Order confirmed manually", getCurrentUserId());
+        
+        createShipmentForOrder(savedOrder);
+        
         return orderMapper.toResponse(savedOrder);
     }
 
@@ -237,6 +245,26 @@ public class OrderService {
         return orderMapper.toResponse(savedOrder);
     }
 
+    public OrderResponse updateShippingStatus(UUID id, String status) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        order.setShipmentStatus(status);
+        if ("DELIVERED".equalsIgnoreCase(status)) {
+            order.setStatus(OrderStatus.DELIVERED);
+            order.setDeliveredAt(LocalDateTime.now());
+            order.setPaymentStatus(PaymentStatus.PAID);
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        
+        // Also call ShippingService to keep it in sync, if needed.
+        // Wait, frontend is already calling shippingService.updateShipmentStatus. 
+        // We will just update our local DB so the FE gets it on refresh.
+        
+        return orderMapper.toResponse(savedOrder);
+    }
+
     public OrderResponse getOrderById(UUID id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
@@ -278,6 +306,10 @@ public class OrderService {
 
         if (request.getStatus() == OrderStatus.CANCELLED && !oldStatus.equals(OrderStatus.CANCELLED)) {
             restoreProductStock(savedOrder);
+        }
+
+        if (request.getStatus() == OrderStatus.CONFIRMED) {
+            createShipmentForOrder(savedOrder);
         }
 
         publishAfterCommit(() -> orderEventProducer.publishOrderStatusChanged(savedOrder, request.getStatus(), request.getNotes()));
@@ -468,9 +500,50 @@ public class OrderService {
             throw new BadRequestException("Invalid payment method: " + method);
         }
     }
+
+    private void createShipmentForOrder(Order savedOrder) {
+        if (savedOrder.getShipmentId() != null && !savedOrder.getShipmentId().isBlank()) {
+            return;
+        }
+
+        String fullAddress = "";
+        try {
+            AddressRequest addr = objectMapper.treeToValue(savedOrder.getShippingAddress(), AddressRequest.class);
+            fullAddress = addr.getAddress() + ", " + addr.getCity() + ", " + addr.getProvince();
+        } catch (Exception e) {
+            log.error("Failed to parse shipping address for order {}", savedOrder.getOrderNumber(), e);
+            fullAddress = "Unknown Address";
+        }
+
+        BigDecimal codAmount = BigDecimal.ZERO;
+        if (savedOrder.getPaymentMethod() == PaymentMethod.CASH_ON_DELIVERY && savedOrder.getPaymentStatus() != PaymentStatus.PAID) {
+            codAmount = savedOrder.getTotal();
+        }
+
+        CreateShipmentRequest shipmentRequest = CreateShipmentRequest.builder()
+                .orderId(savedOrder.getId().toString())
+                .orderNumber(savedOrder.getOrderNumber())
+                .recipientName(savedOrder.getCustomerName())
+                .phone(savedOrder.getCustomerPhone())
+                .address(fullAddress)
+                .shippingFee(savedOrder.getShipping())
+                .codAmount(codAmount)
+                .estimatedDays(3)
+                .build();
+
+        try {
+            CreateShipmentResponse shipmentResponse = shippingServiceClient.createShipment(shipmentRequest);
+            if (shipmentResponse != null && shipmentResponse.getShipmentId() != null) {
+                savedOrder.setShipmentId(String.valueOf(shipmentResponse.getShipmentId()));
+                savedOrder.setShipmentStatus("PENDING");
+                if (shipmentResponse.getShipmentNumber() != null) {
+                    savedOrder.setTrackingNumber(shipmentResponse.getShipmentNumber());
+                }
+                orderRepository.save(savedOrder);
+                log.info("Shipment created successfully for order: {}", savedOrder.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.error("Failed to create shipment for order {}", savedOrder.getOrderNumber(), e);
+        }
+    }
 }
-
-
-
-
-

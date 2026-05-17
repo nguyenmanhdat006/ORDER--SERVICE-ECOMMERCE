@@ -7,6 +7,9 @@ import com.ecommerce.orderservice.dto.shipping.CreateShipmentResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -22,10 +25,16 @@ public class ShippingServiceClient {
         log.info("Calculating shipping fee for city: {}, province: {}", request.getCity(), request.getProvince());
 
         try {
-            CalculateFeeResponse response = shippingServiceWebClient.post()
+            String token = getCurrentToken();
+            WebClient.RequestHeadersSpec<?> spec = shippingServiceWebClient.post()
                     .uri("/api/shipping/calculate-fee")
-                    .bodyValue(request)
-                    .retrieve()
+                    .bodyValue(request);
+            
+            if (token != null && !token.isBlank()) {
+                spec = spec.header("Authorization", "Bearer " + token);
+            }
+
+            CalculateFeeResponse response = spec.retrieve()
                     .bodyToMono(CalculateFeeResponse.class)
                     .block();
 
@@ -45,10 +54,16 @@ public class ShippingServiceClient {
         log.info("Creating shipment for order: {}", request.getOrderNumber());
 
         try {
-            CreateShipmentResponse response = shippingServiceWebClient.post()
+            String token = getCurrentToken();
+            WebClient.RequestHeadersSpec<?> spec = shippingServiceWebClient.post()
                     .uri("/api/shipping/create")
-                    .bodyValue(request)
-                    .retrieve()
+                    .bodyValue(request);
+
+            if (token != null && !token.isBlank()) {
+                spec = spec.header("Authorization", "Bearer " + token);
+            }
+
+            CreateShipmentResponse response = spec.retrieve()
                     .bodyToMono(CreateShipmentResponse.class)
                     .block();
 
@@ -63,6 +78,14 @@ public class ShippingServiceClient {
             log.error("Error creating shipment for order: {}", request.getOrderNumber(), e);
             throw new RuntimeException("Failed to create shipment", e);
         }
+    }
+
+    private String getCurrentToken() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth && jwtAuth.getToken() != null) {
+            return jwtAuth.getToken().getTokenValue();
+        }
+        return null;
     }
 }
 
