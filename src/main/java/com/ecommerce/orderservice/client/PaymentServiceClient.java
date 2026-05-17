@@ -34,6 +34,9 @@ public class PaymentServiceClient {
             log.info("Payment created for order: {}, paymentNumber: {}",
                     request.getOrderNumber(), response.getPaymentNumber());
             return response;
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.error("Error creating payment for order: {}. Response: {}", request.getOrderNumber(), e.getResponseBodyAsString());
+            throw new RuntimeException("Failed to create payment: " + e.getResponseBodyAsString(), e);
         } catch (Exception e) {
             log.error("Error creating payment for order: {}", request.getOrderNumber(), e);
             throw new RuntimeException("Failed to create payment", e);
