@@ -59,14 +59,6 @@ public class OrderItemService {
                     .build();
 
             orderItems.add(orderItem);
-
-            // Reduce product stock
-//            try {
-//                productServiceClient.reduceStock(cartItem.productId, cartItem.quantity);
-//            } catch (Exception e) {
-//                log.error("Failed to reduce stock for product: {}", cartItem.productId, e);
-//                throw new BadRequestException("Failed to update product stock");
-//            }
         }
 
         // Save all order items
