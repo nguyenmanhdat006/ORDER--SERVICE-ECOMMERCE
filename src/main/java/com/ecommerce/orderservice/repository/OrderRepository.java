@@ -44,5 +44,46 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     );
 
     long countByStatus(OrderStatus status);
+
+    Long countByStatusAndCreatedAtBetween(OrderStatus status, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.status IN :statuses")
+    java.math.BigDecimal sumTotalByStatusIn(@Param("statuses") List<OrderStatus> statuses);
+
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o " +
+           "WHERE o.status IN :statuses " +
+           "AND o.createdAt >= :start AND o.createdAt < :end")
+    java.math.BigDecimal sumTotalByStatusInAndCreatedAtBetween(
+        @Param("statuses") List<OrderStatus> statuses,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end
+    );
+
+    Long countByStatusIn(List<OrderStatus> statuses);
+
+    Long countByCreatedAtAfter(LocalDateTime date);
+
+    @Query("SELECT CAST(o.createdAt AS date) as date, " +
+           "COALESCE(SUM(o.total), 0) as sales, " +
+           "COUNT(o) as orderCount " +
+           "FROM Order o " +
+           "WHERE o.status IN ('CONFIRMED', 'DELIVERED') " +
+           "AND o.createdAt >= :start AND o.createdAt <= :end " +
+           "GROUP BY CAST(o.createdAt AS date) " +
+           "ORDER BY CAST(o.createdAt AS date)")
+    List<Object[]> getSalesByDateBetween(
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end
+    );
+
+    @Query("SELECT oi.productId, oi.productName, oi.productImageUrl, " +
+           "oi.price, " +
+           "SUM(oi.quantity) as totalSold, " +
+           "SUM(oi.price * oi.quantity) as totalRevenue " +
+           "FROM Order o JOIN o.items oi " +
+           "WHERE o.status IN ('CONFIRMED', 'DELIVERED') " +
+           "GROUP BY oi.productId, oi.productName, oi.productImageUrl, oi.price " +
+           "ORDER BY totalSold DESC")
+    List<Object[]> getTopSellingProducts();
 }
 
