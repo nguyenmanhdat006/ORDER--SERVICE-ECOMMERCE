@@ -8,6 +8,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -15,6 +17,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Security Configuration
@@ -75,8 +81,28 @@ public class SecurityConfig {
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            // Extract authorities from realm_access and resource_access
-            return Arrays.asList();
+            Collection<GrantedAuthority> authorities = new HashSet<>();
+
+            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+            if (realmAccess != null && realmAccess.get("roles") instanceof List<?> realmRoles) {
+                realmRoles.forEach(role ->
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role))
+                );
+            }
+
+            Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
+            if (resourceAccess != null) {
+                resourceAccess.values().forEach(client -> {
+                    if (client instanceof Map<?, ?> clientMap
+                            && clientMap.get("roles") instanceof List<?> clientRoles) {
+                        clientRoles.forEach(role ->
+                                authorities.add(new SimpleGrantedAuthority("ROLE_" + role))
+                        );
+                    }
+                });
+            }
+
+            return authorities;
         });
         return converter;
     }

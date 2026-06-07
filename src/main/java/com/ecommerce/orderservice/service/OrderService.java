@@ -8,6 +8,7 @@ import com.ecommerce.orderservice.dto.payment.PaymentResponse;
 import com.ecommerce.orderservice.dto.request.AddressRequest;
 import com.ecommerce.orderservice.dto.request.CancelOrderRequest;
 import com.ecommerce.orderservice.dto.request.CreateOrderRequest;
+import com.ecommerce.orderservice.dto.request.OrderFilterParams;
 import com.ecommerce.orderservice.dto.request.OrderSearchRequest;
 import com.ecommerce.orderservice.dto.request.PaymentConfirmRequest;
 import com.ecommerce.orderservice.dto.request.OrderItemRequest;
@@ -37,6 +38,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
@@ -269,12 +271,29 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        String userId = getCurrentUserId();
-        if (!order.getUserId().equals(userId)) {
-            throw new BadRequestException("You don't have permission to view this order");
+        if (!isAdmin()) {
+            String userId = getCurrentUserId();
+            if (!order.getUserId().equals(userId)) {
+                throw new BadRequestException("You don't have permission to view this order");
+            }
         }
 
         return orderMapper.toResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> getAllOrders(OrderFilterParams filterParams) {
+        OrderSearchRequest request = OrderSearchRequest.builder()
+                .keyword(filterParams.getKeyword())
+                .status(filterParams.getStatus())
+                .startDate(filterParams.getStartDate())
+                .endDate(filterParams.getEndDate())
+                .page(filterParams.getPage())
+                .size(filterParams.getSize())
+                .sortBy(filterParams.getSortBy())
+                .sortDirection(filterParams.getSortDirection())
+                .build();
+        return searchOrders(request);
     }
 
     public OrderResponse getOrderByNumber(String orderNumber) {
@@ -335,7 +354,13 @@ public class OrderService {
     }
 
     public PageResponse<OrderResponse> searchOrders(OrderSearchRequest request) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+        String sortField = request.getSortBy() != null && !request.getSortBy().isBlank()
+                ? request.getSortBy()
+                : "orderedAt";
+        Sort.Direction direction = "asc".equalsIgnoreCase(request.getSortDirection())
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(direction, sortField));
         LocalDateTime startDate = request.getStartDate() != null ? request.getStartDate().atStartOfDay() : null;
         LocalDateTime endDate = request.getEndDate() != null ? request.getEndDate().atTime(23, 59, 59) : null;
 
@@ -446,6 +471,16 @@ public class OrderService {
     private String getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "anonymous";
+    }
+
+    private boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority));
     }
 
     private String getCurrentToken() {

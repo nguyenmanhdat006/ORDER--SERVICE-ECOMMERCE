@@ -1,6 +1,7 @@
 package com.ecommerce.orderservice.controller;
 
 import com.ecommerce.orderservice.dto.request.CreateOrderRequest;
+import com.ecommerce.orderservice.dto.request.OrderFilterParams;
 import com.ecommerce.orderservice.dto.request.PaymentConfirmRequest;
 import com.ecommerce.orderservice.dto.response.OrderResponse;
 import com.ecommerce.orderservice.dto.response.PageResponse;
@@ -8,7 +9,9 @@ import com.ecommerce.orderservice.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -66,10 +69,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.updateShippingStatus(id, status));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id) {
-        log.info("Fetching order: {}", id);
-        return ResponseEntity.ok(orderService.getOrderById(id));
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PageResponse<OrderResponse>> getAllOrders(
+            @ParameterObject OrderFilterParams filterParams) {
+        log.info("Fetching all orders for admin, page={}, size={}", filterParams.getPage(), filterParams.getSize());
+        return ResponseEntity.ok(orderService.getAllOrders(filterParams));
     }
 
     @GetMapping("/my-orders")
@@ -78,6 +83,12 @@ public class OrderController {
             @RequestParam(defaultValue = "10") int size) {
         log.info("Fetching orders for current user, page={}, size={}", page, size);
         return ResponseEntity.ok(orderService.getMyOrders(page, size));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id) {
+        log.info("Fetching order: {}", id);
+        return ResponseEntity.ok(orderService.getOrderById(id));
     }
 }
 
