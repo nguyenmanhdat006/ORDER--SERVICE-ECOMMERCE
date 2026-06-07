@@ -30,6 +30,7 @@ import com.ecommerce.orderservice.exception.ResourceNotFoundException;
 import com.ecommerce.orderservice.event.OrderEventProducer;
 import com.ecommerce.orderservice.mapper.OrderMapper;
 import com.ecommerce.orderservice.repository.OrderRepository;
+import com.ecommerce.orderservice.repository.OrderSpecifications;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -361,11 +362,8 @@ public class OrderService {
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(direction, sortField));
-        LocalDateTime startDate = request.getStartDate() != null ? request.getStartDate().atStartOfDay() : null;
-        LocalDateTime endDate = request.getEndDate() != null ? request.getEndDate().atTime(23, 59, 59) : null;
 
-        Page<Order> orders = orderRepository.searchOrders(
-                request.getKeyword(), request.getStatus(), startDate, endDate, pageable);
+        Page<Order> orders = orderRepository.findAll(OrderSpecifications.from(request), pageable);
 
         return new PageResponse<>(
                 orders.getContent().stream().map(orderMapper::toResponse).toList(),
