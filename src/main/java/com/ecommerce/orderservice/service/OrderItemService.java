@@ -78,6 +78,7 @@ public class OrderItemService {
                     .order(order)
                     .productId(itemRequest.getProductId())
                     .productName(itemRequest.getProductName())
+                    .productImageUrl(itemRequest.getProductImageUrl())
                     .quantity(itemRequest.getQuantity())
                     .price(price)
                     .subtotal(subtotal)
